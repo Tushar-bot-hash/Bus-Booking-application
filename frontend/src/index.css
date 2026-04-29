@@ -1,0 +1,94 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  @apply bg-graySoft text-dark antialiased;
+}
+
+input,
+select {
+  @apply w-full rounded-xl border border-gray-200 bg-white px-4 py-3 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/20;
+}
+
+button {
+  @apply transition;
+}
+
+[data-anime] {
+  opacity: 0;
+}
+
+.btn-primary {
+  @apply rounded-xl bg-primary px-5 py-3 font-semibold text-white shadow-soft hover:bg-primaryDark active:scale-[0.98];
+}
+
+.btn-secondary {
+  @apply rounded-xl border border-primary bg-white px-5 py-3 font-semibold text-primary hover:bg-primaryLight active:scale-[0.98];
+}
+
+.card {
+  @apply rounded-3xl bg-white p-6 shadow-soft;
+}
+
+.badge {
+  @apply rounded-full px-3 py-1 text-xs font-semibold;
+}
+
+.animated-green-bg {
+  background:
+    radial-gradient(circle at 15% 10%, rgba(22, 167, 101, 0.2), transparent 28%),
+    radial-gradient(circle at 85% 15%, rgba(34, 197, 94, 0.16), transparent 28%),
+    linear-gradient(135deg, #e6f4ea 0%, #ffffff 45%, #f0fff4 100%);
+}
+
+.glow-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(50px);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.seat-btn {
+  @apply h-14 rounded-2xl border text-sm font-bold shadow-sm transition;
+}
+
+.result-card {
+  opacity: 0;
+}
+
+.booking-card {
+  opacity: 0;
+}
+
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.65),
+    transparent
+  );
+  animation: shimmerMove 1.5s infinite;
+}
+
+@keyframes shimmerMove {
+  100% {
+    transform: translateX(100%);
+  }
+}
