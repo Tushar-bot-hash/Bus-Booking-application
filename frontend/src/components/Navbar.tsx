@@ -9,11 +9,12 @@ export default function Navbar() {
   const ref = useRef<HTMLElement>(null);
 
   useEffect(() => {
+    // Smooth slide-down entry for the navbar
     anime({
       targets: ref.current,
       translateY: [-70, 0],
       opacity: [0, 1],
-      duration: 700,
+      duration: 800,
       easing: "easeOutExpo"
     });
   }, []);
@@ -26,50 +27,83 @@ export default function Navbar() {
   return (
     <header
       ref={ref}
-      className="sticky top-0 z-50 border-b border-green-100 bg-white/85 backdrop-blur-xl"
+      className="sticky top-0 z-50 border-b border-green-100 bg-white/90 backdrop-blur-md"
     >
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
-        <Link to="/" className="flex items-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-xl text-white shadow-soft">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+        {/* Logo Section */}
+        <Link to="/" className="flex items-center gap-3 transition-transform hover:scale-105 active:scale-95">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-2xl text-white shadow-soft">
             🚌
           </div>
-          <div>
-            <div className="text-lg font-extrabold text-primaryDark">GreenBus</div>
-            <div className="text-xs text-gray-500">India Bus Booking</div>
+          <div className="flex flex-col">
+            <span className="text-xl font-black leading-none text-primaryDark tracking-tight">
+              GreenBus
+            </span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-primary/70">
+              India
+            </span>
           </div>
         </Link>
 
-        <nav className="hidden items-center gap-6 md:flex">
-          <NavLink to="/" className="font-medium text-gray-700 hover:text-primary">
+        {/* Navigation Links */}
+        <nav className="hidden items-center gap-8 md:flex">
+          <NavLink 
+            to="/" 
+            className={({ isActive }) => 
+              `text-sm font-semibold transition-colors hover:text-primary ${
+                isActive ? "text-primary" : "text-gray-600"
+              }`
+            }
+          >
             Home
           </NavLink>
 
           {user && (
-            <NavLink to="/my-bookings" className="font-medium text-gray-700 hover:text-primary">
+            <NavLink 
+              to="/my-bookings" 
+              className={({ isActive }) => 
+                `text-sm font-semibold transition-colors hover:text-primary ${
+                  isActive ? "text-primary" : "text-gray-600"
+                }`
+              }
+            >
               My Bookings
             </NavLink>
           )}
         </nav>
 
-        <div className="flex items-center gap-3">
+        {/* Auth Actions */}
+        <div className="flex items-center gap-4">
           {user ? (
-            <>
-              <span className="hidden text-sm text-gray-600 sm:inline">
-                Hi, {user.first_name}
-              </span>
-              <button onClick={handleLogout} className="btn-secondary py-2">
+            <div className="flex items-center gap-4">
+              <div className="hidden flex-col items-end sm:flex">
+                <span className="text-[10px] font-bold uppercase text-gray-400">Welcome</span>
+                <span className="text-sm font-bold text-gray-800">
+                  {user.first_name}
+                </span>
+              </div>
+              <button 
+                onClick={handleLogout} 
+                className="rounded-xl border border-red-100 bg-red-50 px-5 py-2.5 text-sm font-bold text-red-600 transition-all hover:bg-red-600 hover:text-white active:scale-95"
+              >
                 Logout
               </button>
-            </>
+            </div>
           ) : (
-            <>
-              <Link to="/login" className="btn-secondary py-2">
+            <div className="flex items-center gap-2">
+              <Link 
+                to="/login" 
+                className="rounded-xl px-5 py-2.5 text-sm font-bold text-gray-600 transition-colors hover:bg-gray-50 active:scale-95"
+              >
                 Login
               </Link>
-              <Link to="/register" className="btn-primary py-2">
+              <Link 
+                to="/register" 
+                className="rounded-xl bg-primary px-6 py-2.5 text-sm font-bold text-white shadow-soft transition-all hover:bg-primaryDark hover:shadow-lg active:scale-95"
+              >
                 Register
               </Link>
-            </>
+            </div>
           )}
         </div>
       </div>
