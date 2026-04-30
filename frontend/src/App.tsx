@@ -1,6 +1,8 @@
+import React from 'react'; // Add this to the top of the file causing the error
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
+
 
 import Home from "./pages/Home";
 import Login from "./pages/Login";
