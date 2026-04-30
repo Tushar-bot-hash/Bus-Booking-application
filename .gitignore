@@ -1,0 +1,15 @@
+# Secrets and Environment Variables
+.env
+*.env
+.venv/
+env/
+
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+
+# Build outputs
+dist/
+build/
+staticfiles/
