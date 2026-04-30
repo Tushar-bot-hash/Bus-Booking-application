@@ -12,6 +12,7 @@ export default {
         white: "#ffffff",
         graySoft: "#f3f4f6",
         grayDark: "#111827",
+        dark: "#111827",
       },
       boxShadow: {
         soft: "0 2px 10px rgba(0,0,0,0.06)",
