@@ -60,6 +60,9 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 # --- CORS & CSRF (Local + Production) ---
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[
     "https://bus-booking-application-gamma.vercel.app",
+    
+    "https://bus-booking-eight.vercel.app",
+
     "http://localhost:5173",  # Default Vite port
     "http://127.0.0.1:5173"
 ])
