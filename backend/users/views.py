@@ -1,6 +1,5 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -11,8 +10,10 @@ from .serializers import RegisterSerializer, UserSerializer
 
 User = get_user_model()
 
-
 def set_auth_cookies(response, access_token, refresh_token):
+    """
+    Utility to set JWT tokens in HttpOnly cookies based on settings.py logic.
+    """
     response.set_cookie(
         key=settings.SIMPLE_JWT["AUTH_COOKIE"],
         value=access_token,
@@ -41,25 +42,41 @@ class RegisterView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        
+        # Generate tokens immediately upon registration
         refresh = RefreshToken.for_user(user)
         response = Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
+        
         return set_auth_cookies(response, str(refresh.access_token), str(refresh))
 
 
 class CookieTokenObtainPairView(TokenObtainPairView):
+    """
+    Custom Login View that moves tokens from the JSON body into HttpOnly Cookies.
+    """
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
+        
         if response.status_code == 200:
-            access = response.data["access"]
-            refresh = response.data["refresh"]
-            user = User.objects.get(id=request.user.id if request.user.is_authenticated else None) or User.objects.get(email=request.data["email"])
-            user.last_login_ip = request.META.get("REMOTE_ADDR")
-            user.failed_login_attempts = 0
-            user.save(update_fields=["last_login_ip", "failed_login_attempts"])
-            res = Response({"user": UserSerializer(user).data})
-            return set_auth_cookies(res, access, refresh)
+            access = response.data.get("access")
+            refresh = response.data.get("refresh")
+            
+            # Fetch user by email since request.user isn't available in Login POST
+            email = request.data.get("email")
+            try:
+                user = User.objects.get(email=email)
+                user.last_login_ip = request.META.get("REMOTE_ADDR")
+                user.failed_login_attempts = 0
+                user.save(update_fields=["last_login_ip", "failed_login_attempts"])
+                
+                # Replace standard response with user data + cookies
+                res = Response({"user": UserSerializer(user).data})
+                return set_auth_cookies(res, access, refresh)
+            except User.DoesNotExist:
+                return response # Fallback to standard error
+                
         return response
 
 
@@ -67,14 +84,26 @@ class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        response = Response({"detail": "Logged out"})
-        response.delete_cookie(settings.SIMPLE_JWT["AUTH_COOKIE"])
-        response.delete_cookie(settings.SIMPLE_JWT["AUTH_COOKIE_REFRESH"])
+        response = Response({"detail": "Logged out"}, status=status.HTTP_200_OK)
+        # Clear cookies by setting expiry to 0
+        response.delete_cookie(
+            settings.SIMPLE_JWT["AUTH_COOKIE"],
+            samesite=settings.SIMPLE_JWT["AUTH_COOKIE_SAMESITE"]
+        )
+        response.delete_cookie(
+            settings.SIMPLE_JWT["AUTH_COOKIE_REFRESH"],
+            samesite=settings.SIMPLE_JWT["AUTH_COOKIE_SAMESITE"]
+        )
         return response
 
 
 class MeView(APIView):
+    """
+    Returns the current user profile. Used by the frontend on refresh 
+    to check if the session is still active.
+    """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        return Response(UserSerializer(request.user).data)
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)
