@@ -35,7 +35,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware", # Top priority
+    "corsheaders.middleware.CorsMiddleware",  # Must be FIRST
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -57,26 +57,56 @@ STATIC_URL = "/static/"
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
-# --- CORS & CSRF (Local + Production) ---
+# ============ UPDATED CORS & CSRF SETTINGS ============
+# CORS Settings - Fixed for credentials
 CORS_ALLOWED_ORIGINS = [
-    # The primary domain from your screenshot
-    "https://bus-booking-application-tusharv811-2882s-projects.vercel.app",
-    
-    # The "gamma" domain you were just using
     "https://bus-booking-application-gamma.vercel.app",
-    
-    # Local development
+    "https://bus-booking-application-tusharv811-2882s-projects.vercel.app",
     "http://localhost:5173",
+    "http://localhost:3000",
 ]
 
+# Critical for withCredentials
 CORS_ALLOW_CREDENTIALS = True
 
-CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[
-    "https://bus-booking-application-gamma.vercel.app",
-    "http://localhost:5173"
-])
+# Explicitly allow all necessary methods
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',  # Important for preflight requests
+    'PATCH',
+    'POST',
+    'PUT',
+]
 
-# --- DYNAMIC SECURITY SETTINGS ---
+# Explicitly allow all necessary headers
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
+# Expose headers to frontend
+CORS_EXPOSE_HEADERS = ["Content-Type", "X-CSRFToken"]
+
+# CSRF Settings
+CSRF_TRUSTED_ORIGINS = [
+    "https://bus-booking-application-gamma.vercel.app",
+    "https://bus-booking-application-tusharv811-2882s-projects.vercel.app",
+    "http://localhost:5173",
+    "http://localhost:3000",
+]
+
+# Make sure preflight requests aren't cached too long (optional)
+CORS_PREFLIGHT_MAX_AGE = 86400  # 24 hours
+
+# ============ SECURITY SETTINGS ============
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 if DEBUG:
@@ -87,14 +117,29 @@ if DEBUG:
     CSRF_COOKIE_SAMESITE = "Lax"
 else:
     # Production Settings (Render/Vercel)
+    # Must be True for HTTPS
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+    # 'None' required for cross-site requests with credentials
     SESSION_COOKIE_SAMESITE = "None"
     CSRF_COOKIE_SAMESITE = "None"
 
-CORS_EXPOSE_HEADERS = ["Content-Type", "X-CSRFToken"]
+# ============ JWT SETTINGS ============
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "AUTH_COOKIE": "access_token",
+    "AUTH_COOKIE_REFRESH": "refresh_token",
+    "AUTH_COOKIE_SECURE": not DEBUG,  # True in production
+    "AUTH_COOKIE_HTTP_ONLY": True,
+    "AUTH_COOKIE_SAMESITE": "None" if not DEBUG else "Lax",  # 'None' for cross-site
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
+}
 
-# REST Framework
+# ============ OTHER SETTINGS ============
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -104,21 +149,14 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
-# --- JWT SETTINGS ---
-SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
-    "ROTATE_REFRESH_TOKENS": True,
-    "BLACKLIST_AFTER_ROTATION": True,
-    "AUTH_COOKIE": "access_token",
-    "AUTH_COOKIE_REFRESH": "refresh_token",
-    "AUTH_COOKIE_SECURE": not DEBUG,
-    "AUTH_COOKIE_HTTP_ONLY": True,
-    "AUTH_COOKIE_SAMESITE": "Lax" if DEBUG else "None",
-    "USER_ID_FIELD": "id",
-    "USER_ID_CLAIM": "user_id",
-}
-
 STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET")
 FRONTEND_URL = env("FRONTEND_URL")
+
+# Debug CORS on startup (remove after confirming it works)
+if not DEBUG:
+    print("=== Production CORS Settings ===")
+    print(f"CORS_ALLOWED_ORIGINS: {CORS_ALLOWED_ORIGINS}")
+    print(f"CORS_ALLOW_CREDENTIALS: {CORS_ALLOW_CREDENTIALS}")
+    print(f"SESSION_COOKIE_SAMESITE: {SESSION_COOKIE_SAMESITE}")
+    print(f"CSRF_COOKIE_SAMESITE: {CSRF_COOKIE_SAMESITE}")
