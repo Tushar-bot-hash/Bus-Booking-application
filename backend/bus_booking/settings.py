@@ -58,14 +58,17 @@ STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # --- CORS & CSRF (Local + Production) ---
-CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[
+CORS_ALLOWED_ORIGINS = [
+    # The primary domain from your screenshot
+    "https://bus-booking-application-tusharv811-2882s-projects.vercel.app",
+    
+    # The "gamma" domain you were just using
     "https://bus-booking-application-gamma.vercel.app",
     
-    "https://bus-booking-eight.vercel.app",
+    # Local development
+    "http://localhost:5173",
+]
 
-    "http://localhost:5173",  # Default Vite port
-    "http://127.0.0.1:5173"
-])
 CORS_ALLOW_CREDENTIALS = True
 
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[
