@@ -1,41 +1,109 @@
-from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
-from django.db import models
-from django.utils import timezone
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from rest_framework import generics, status
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView
+from .serializers import RegisterSerializer, UserSerializer
+
+User = get_user_model()
+
+def set_auth_cookies(response, access_token, refresh_token):
+    """
+    Utility to set JWT tokens in HttpOnly cookies based on settings.py logic.
+    """
+    response.set_cookie(
+        key=settings.SIMPLE_JWT["AUTH_COOKIE"],
+        value=access_token,
+        max_age=settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"].total_seconds(),
+        secure=settings.SIMPLE_JWT["AUTH_COOKIE_SECURE"],
+        httponly=settings.SIMPLE_JWT["AUTH_COOKIE_HTTP_ONLY"],
+        samesite=settings.SIMPLE_JWT["AUTH_COOKIE_SAMESITE"],
+    )
+    response.set_cookie(
+        key=settings.SIMPLE_JWT["AUTH_COOKIE_REFRESH"],
+        value=refresh_token,
+        max_age=settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"].total_seconds(),
+        secure=settings.SIMPLE_JWT["AUTH_COOKIE_SECURE"],
+        httponly=settings.SIMPLE_JWT["AUTH_COOKIE_HTTP_ONLY"],
+        samesite=settings.SIMPLE_JWT["AUTH_COOKIE_SAMESITE"],
+    )
+    return response
 
 
-class UserManager(BaseUserManager):
-    def create_user(self, email, password=None, **extra_fields):
-        if not email:
-            raise ValueError("Email is required.")
-        email = self.normalize_email(email)
-        user = self.model(email=email, **extra_fields)
-        user.set_password(password)
-        user.save(using=self._db)
-        return user
+class RegisterView(generics.CreateAPIView):
+    queryset = User.objects.all()
+    serializer_class = RegisterSerializer
+    permission_classes = [AllowAny]
 
-    def create_superuser(self, email, password=None, **extra_fields):
-        extra_fields.setdefault("is_staff", True)
-        extra_fields.setdefault("is_superuser", True)
-        return self.create_user(email, password, **extra_fields)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        
+        # Generate tokens immediately upon registration
+        refresh = RefreshToken.for_user(user)
+        response = Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
+        
+        return set_auth_cookies(response, str(refresh.access_token), str(refresh))
 
 
-class User(AbstractBaseUser, PermissionsMixin):
-    email = models.EmailField(unique=True)
-    first_name = models.CharField(max_length=50)
-    last_name = models.CharField(max_length=50)
-    phone = models.CharField(max_length=20, blank=True)
-    is_active = models.BooleanField(default=True)
-    is_staff = models.BooleanField(default=False)
-    date_joined = models.DateTimeField(default=timezone.now)
-    last_login_ip = models.GenericIPAddressField(null=True, blank=True)
-    failed_login_attempts = models.PositiveSmallIntegerField(default=0)
+class CookieTokenObtainPairView(TokenObtainPairView):
+    """
+    Custom Login View that moves tokens from the JSON body into HttpOnly Cookies.
+    """
+    permission_classes = [AllowAny]
 
-    objects = UserManager()
-    USERNAME_FIELD = "email"
-    REQUIRED_FIELDS = ["first_name", "last_name"]
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        
+        if response.status_code == 200:
+            access = response.data.get("access")
+            refresh = response.data.get("refresh")
+            
+            # Fetch user by email since request.user isn't available in Login POST
+            email = request.data.get("email")
+            try:
+                user = User.objects.get(email=email)
+                user.last_login_ip = request.META.get("REMOTE_ADDR")
+                user.failed_login_attempts = 0
+                user.save(update_fields=["last_login_ip", "failed_login_attempts"])
+                
+                # Replace standard response with user data + cookies
+                res = Response({"user": UserSerializer(user).data})
+                return set_auth_cookies(res, access, refresh)
+            except User.DoesNotExist:
+                return response # Fallback to standard error
+                
+        return response
 
-    def full_name(self):
-        return f"{self.first_name} {self.last_name}"
 
-    def __str__(self):
-        return self.email
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        response = Response({"detail": "Logged out"}, status=status.HTTP_200_OK)
+        # Clear cookies by setting expiry to 0
+        response.delete_cookie(
+            settings.SIMPLE_JWT["AUTH_COOKIE"],
+            samesite=settings.SIMPLE_JWT["AUTH_COOKIE_SAMESITE"]
+        )
+        response.delete_cookie(
+            settings.SIMPLE_JWT["AUTH_COOKIE_REFRESH"],
+            samesite=settings.SIMPLE_JWT["AUTH_COOKIE_SAMESITE"]
+        )
+        return response
+
+
+class MeView(APIView):
+    """
+    Returns the current user profile. Used by the frontend on refresh 
+    to check if the session is still active.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)
