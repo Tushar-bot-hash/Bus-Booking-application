@@ -93,8 +93,13 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 CORS_ALLOWED_ORIGINS = [
     "https://bus-booking-application-gamma.vercel.app",
     "https://bus-booking-application-tusharv811-2882s-projects.vercel.app",
+    "https://bus-booking-application-git-main-tusharv811-2882s-projects.vercel.app",
     "http://localhost:5173",
     "http://localhost:3000",
+]
+
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://bus-booking-application-.*\.vercel\.app$",
 ]
 
 # Allow credentials (cookies, authorization headers)
@@ -130,6 +135,7 @@ CORS_EXPOSE_HEADERS = ["Content-Type", "X-CSRFToken"]
 CSRF_TRUSTED_ORIGINS = [
     "https://bus-booking-application-gamma.vercel.app",
     "https://bus-booking-application-tusharv811-2882s-projects.vercel.app",
+    "https://bus-booking-application-git-main-tusharv811-2882s-projects.vercel.app",
     "http://localhost:5173",
     "http://localhost:3000",
 ]
