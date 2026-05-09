@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
 from .serializers import RegisterSerializer, UserSerializer
 
 User = get_user_model()
@@ -107,3 +108,35 @@ class MeView(APIView):
     def get(self, request):
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
+
+
+class CookieTokenRefreshView(APIView):
+    """
+    Reads the refresh token from the HttpOnly cookie and issues a new
+    access token (also written back as a cookie).
+    The standard TokenRefreshView expects the token in the request body,
+    which is inaccessible to JS — this fixes that.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        refresh_cookie_name = settings.SIMPLE_JWT.get("AUTH_COOKIE_REFRESH", "refresh_token")
+        raw_token = request.COOKIES.get(refresh_cookie_name)
+
+        if not raw_token:
+            return Response(
+                {"detail": "Refresh token cookie not found."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        try:
+            refresh = RefreshToken(raw_token)
+            access_token = str(refresh.access_token)
+
+            # If ROTATE_REFRESH_TOKENS is True a new refresh token is also issued
+            new_refresh = str(refresh) if settings.SIMPLE_JWT.get("ROTATE_REFRESH_TOKENS") else raw_token
+        except TokenError as e:
+            raise InvalidToken(e.args[0])
+
+        response = Response({"detail": "Token refreshed"}, status=status.HTTP_200_OK)
+        return set_auth_cookies(response, access_token, new_refresh)

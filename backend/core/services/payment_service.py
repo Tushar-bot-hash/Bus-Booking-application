@@ -50,7 +50,7 @@ def create_stripe_checkout_session(booking: Booking):
                     "product_data": {
                         "name": f"Bus Ticket - {route.origin} to {route.destination}",
                         "description": (
-                            f"PNR: {getattr(booking, 'pnr_number', booking.reference_code)} | "
+                            f"PNR: {booking.reference_code} | "
                             f"Seats: {seats}"
                         ),
                     },
@@ -64,7 +64,6 @@ def create_stripe_checkout_session(booking: Booking):
         metadata={
             "booking_id": str(booking.id),
             "reference_code": booking.reference_code,
-            "pnr_number": getattr(booking, "pnr_number", ""),
             "user_id": str(booking.user_id),
         },
     )

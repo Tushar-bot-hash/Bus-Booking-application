@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User  # This is the critical line: IMPORT, don't DEFINE
+from users.models import User # This is the critical line: IMPORT, don't DEFINE
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:

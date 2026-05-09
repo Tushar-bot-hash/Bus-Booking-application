@@ -14,11 +14,10 @@ function formatDateTime(value: string) {
 export default function SearchResults() {
   const pageRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  useAnimePage(pageRef);
-
   const [params] = useSearchParams();
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(true);
+  useAnimePage(pageRef, [loading]);
 
   const origin = params.get("origin") || "";
   const destination = params.get("destination") || "";
@@ -32,6 +31,9 @@ export default function SearchResults() {
           params: { origin, destination, date }
         });
         setSchedules(res.data);
+      } catch (error) {
+        console.error("Search error:", error);
+        setSchedules([]);
       } finally {
         setLoading(false);
       }
@@ -41,7 +43,7 @@ export default function SearchResults() {
   }, [origin, destination, date]);
 
   useEffect(() => {
-    if (!loading && listRef.current) {
+    if (!loading && listRef.current && schedules.length > 0) {
       anime({
         targets: listRef.current.querySelectorAll(".result-card"),
         opacity: [0, 1],
@@ -82,15 +84,15 @@ export default function SearchResults() {
             <div key={schedule.id} className="result-card card">
               <div className="grid gap-5 md:grid-cols-[1.5fr_1fr_1fr_auto] md:items-center">
                 <div>
-                  <h2 className="text-xl font-bold text-dark">{schedule.bus.name}</h2>
+                  <h2 className="text-xl font-bold text-dark">{schedule.bus?.name || "Bus"}</h2>
                   <p className="mt-1 text-sm text-gray-500">
-                    {schedule.bus.operator.name} · {schedule.bus.bus_type} · {schedule.bus.bus_number}
+                    {schedule.bus?.operator?.name || "Bus Operator"} · {schedule.bus?.bus_type || "Standard"} · {schedule.bus?.bus_number || "N/A"}
                   </p>
 
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {schedule.bus.amenities?.ac && <span className="badge bg-green-100 text-primaryDark">AC</span>}
-                    {schedule.bus.amenities?.wifi && <span className="badge bg-green-100 text-primaryDark">WiFi</span>}
-                    {schedule.bus.amenities?.charging && <span className="badge bg-green-100 text-primaryDark">Charging</span>}
+                    {schedule.bus?.amenities?.ac && <span className="badge bg-green-100 text-primaryDark">AC</span>}
+                    {schedule.bus?.amenities?.wifi && <span className="badge bg-green-100 text-primaryDark">WiFi</span>}
+                    {schedule.bus?.amenities?.charging && <span className="badge bg-green-100 text-primaryDark">Charging</span>}
                   </div>
                 </div>
 

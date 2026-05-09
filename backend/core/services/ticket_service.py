@@ -1,4 +1,3 @@
-# backend/core/services/ticket_service.py
 import uuid
 from datetime import timedelta
 from django.utils import timezone
@@ -7,7 +6,7 @@ from core.models import Booking, Seat, Schedule, Payment
 from decimal import Decimal
 
 def generate_pnr():
-    """Generate unique 10-digit PNR like Indian Railways / RedBus"""
+    """Generate unique reference code like Indian Railways / RedBus"""
     return "BUS" + str(uuid.uuid4().int)[:7]
 
 def hold_seats(schedule: Schedule, seat_numbers: list, minutes: int = 10):
@@ -38,8 +37,22 @@ def release_expired_holds():
 @transaction.atomic
 def create_booking(user, schedule, seats, passenger_details):
     """Main booking creation with GST calculation (India)"""
+    # Lock the seat rows so no concurrent request can grab the same seats
+    # while we are in this transaction.
+    locked_seats = (
+        Seat.objects.select_for_update()
+        .filter(
+            schedule=schedule,
+            seat_number__in=[s.seat_number for s in seats],
+            status="available",
+        )
+    )
+
+    if locked_seats.count() != len([s.seat_number for s in seats]):
+        raise ValueError("One or more selected seats are no longer available. Please refresh and try again.")
+
     # Calculate total + GST (5% for bus tickets in India)
-    base_amount = sum(seat.price for seat in seats)
+    base_amount = sum(seat.price for seat in locked_seats)
     gst_rate = Decimal("0.05")  # 5% GST on bus tickets
     gst_amount = base_amount * gst_rate
     total_amount = base_amount + gst_amount
@@ -54,19 +67,20 @@ def create_booking(user, schedule, seats, passenger_details):
         gst_amount=gst_amount,
         status="pending",
         expires_at=timezone.now() + timedelta(minutes=15),
-        pnr_number=generate_pnr(),
+        reference_code=generate_pnr(),
     )
-    
-    booking.seats.set(seats)
-    
-    # Update seat status
-    seats.update(status="held", held_until=booking.expires_at)
-    
-    # Update available seats count
+
+    booking.seats.set(locked_seats)
+
+    # Update seat status atomically
+    locked_seats.update(status="held", held_until=booking.expires_at)
+
+    # Recalculate available seats count from DB (source of truth)
     schedule.available_seats = schedule.seats.filter(status="available").count()
     schedule.save(update_fields=["available_seats"])
-    
+
     return booking
+
 
 @transaction.atomic
 def confirm_booking_after_payment(booking_id):

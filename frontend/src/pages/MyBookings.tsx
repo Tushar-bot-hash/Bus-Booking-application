@@ -6,10 +6,9 @@ import { anime, useAnimePage } from "../hooks/useAnimePage";
 export default function MyBookings() {
   const pageRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  useAnimePage(pageRef);
-
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  useAnimePage(pageRef, [loading]);
 
   async function load() {
     setLoading(true);
@@ -75,18 +74,18 @@ export default function MyBookings() {
               <div className="grid gap-5 md:grid-cols-[1.3fr_1fr_auto] md:items-center">
                 <div>
                   <h2 className="text-xl font-bold">
-                    {booking.schedule.bus.route.origin} to {booking.schedule.bus.route.destination}
+                    {booking.schedule_details.origin} to {booking.schedule_details.destination}
                   </h2>
 
                   <p className="mt-1 text-sm text-gray-500">
-                    {booking.schedule.bus.name} · PNR:{" "}
+                    {booking.schedule_details.bus.name} · PNR:{" "}
                     <span className="font-bold text-primaryDark">
-                      {booking.pnr_number || booking.reference_code}
+                      {booking.reference_code}
                     </span>
                   </p>
 
                   <p className="mt-2 text-sm text-gray-500">
-                    Seats: {booking.seats.map((s) => s.seat_number).join(", ")}
+                    Seats: {booking.seat_numbers.join(", ")}
                   </p>
                 </div>
 

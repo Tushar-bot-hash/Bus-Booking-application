@@ -54,7 +54,9 @@ class Schedule(models.Model):
         ordering = ["departure_time"]
 
     def save(self, *args, **kwargs):
-        if self.available_seats == 0 and self.bus_id:
+        # Only auto-initialize available_seats on first creation (INSERT),
+        # not on every subsequent UPDATE (which would overwrite service logic).
+        if self._state.adding and self.available_seats == 0 and self.bus_id:
             self.available_seats = self.bus.total_seats
         super().save(*args, **kwargs)
 
@@ -90,6 +92,7 @@ class Booking(models.Model):
     passenger_phone = models.CharField(max_length=20)
     passenger_email = models.EmailField()
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    gst_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)  # ADDED
     status = models.CharField(max_length=20, choices=[
         ("pending", "Pending"),
         ("confirmed", "Confirmed"),
@@ -103,8 +106,13 @@ class Booking(models.Model):
     reference_code = models.CharField(max_length=40, unique=True, blank=True)
     stripe_payment_intent_id = models.CharField(max_length=200, blank=True)
 
+    @property
+    def pnr_number(self):
+        """Alias for reference_code to maintain compatibility with service code"""
+        return self.reference_code
+
     def __str__(self):
-        return f"{self.reference_code} - {self.user.email} - {self.total_amount}"
+        return f"{self.reference_code} - {self.user.email} - ₹{self.total_amount}"
 
 
 class Payment(models.Model):
@@ -125,4 +133,4 @@ class Payment(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.booking.reference_code} - {self.status} - {self.amount}"
+        return f"{self.booking.reference_code} - {self.status} - ₹{self.amount}"
